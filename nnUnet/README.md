@@ -28,6 +28,14 @@ This directory contains scripts to preprocess data, train a model, and run infer
    bash run_inference.sh
    ```
 
+4. **Evaluation**
+
+   After inference, run evaluation to assess the model's performance. This returns DSC, HD95, and ASSD metrics as well as overlap per component with the ground truth:
+
+   ```bash
+   python3 run_evaluation.py
+   ```
+
 ## Notes
 
 - This pipeline is designed for use on an HPC system.
