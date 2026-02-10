@@ -45,16 +45,41 @@ def combine_all_subjects(slices_folder, output_folder):
             )  # Convert to grayscale
             arr = np.array(img)
             # Print unique pixel intensities for this slice
-            unique_vals = np.unique(arr)
-            print(
-                f"Subject {subj_num}, slice {fname}: unique pixel intensities: {unique_vals}"
-            )
+            # unique_vals = np.unique(arr)
+            # print(
+            #     f"Subject {subj_num}, slice {fname}: unique pixel intensities: {unique_vals}"
+            # )
             # Binarize: everything >0 becomes 1, else 0
             arr_bin = (arr > 0).astype(np.uint8)
             slices.append(arr_bin)
         volume = np.stack(slices, axis=0)
 
         sitk_img = sitk.GetImageFromArray(volume)
+        # Determine position (prone/supine) from slice filenames
+        first_slice = files[0]
+        if "pos-prone" in first_slice:
+            position = "prone"
+        elif "pos-supine" in first_slice:
+            position = "supine"
+        else:
+            position = None
+        # Copy spatial metadata from original masked .mha file
+        if position:
+            orig_fname = f"sub{subj_num}_pos-{position}_scan-1_conv-sitk_masked.mha"
+            orig_path = os.path.join("masked_colon_rp", orig_fname)
+            if os.path.exists(orig_path):
+                orig_img = sitk.ReadImage(orig_path)
+                sitk_img.SetOrigin(orig_img.GetOrigin())
+                sitk_img.SetSpacing(orig_img.GetSpacing())
+                sitk_img.SetDirection(orig_img.GetDirection())
+            else:
+                print(
+                    f"Warning: original masked .mha file not found for subject {subj_num} ({position}). Using default metadata."
+                )
+        else:
+            print(
+                f"Warning: could not determine position for subject {subj_num}. Using default metadata."
+            )
         out_name = f"colon_{subj_num}_combined_fluid.mha"
         out_path = os.path.join(output_folder, out_name)
         sitk.WriteImage(sitk_img, out_path)
@@ -62,4 +87,4 @@ def combine_all_subjects(slices_folder, output_folder):
 
 
 if "__main__":
-    combine_all_subjects("segmentations", "combined_slices")
+    combine_all_subjects("segmentations_3", "combined_slices")
