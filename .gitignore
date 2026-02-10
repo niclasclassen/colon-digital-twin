@@ -1,2 +1,9 @@
+segmentations*
+.DS_Store
+combined_slices/
+datasets_raw/
+masked_colon_rp
+split_files
+
 .venv
 analysis/data/nnUnet/npz_masks/*.npz
