@@ -9,6 +9,9 @@ import SimpleITK as sitk
 from scipy.ndimage import label
 from skimage.morphology import skeletonize
 
+# GLOBAL VARIABLES
+HEADER_ADDED = False
+
 
 def component_geodesic_diameter(component_mask, spacing_xyz):
     """
@@ -38,8 +41,7 @@ def component_geodesic_diameter(component_mask, spacing_xyz):
                 if dz == 0 and dy == 0 and dx == 0:
                     continue
 
-                edge_length = np.sqrt(
-                    (dx * sx) ** 2 + (dy * sy) ** 2 + (dz * sz) ** 2)
+                edge_length = np.sqrt((dx * sx) ** 2 + (dy * sy) ** 2 + (dz * sz) ** 2)
                 offsets.append((dz, dy, dx, edge_length))
 
     def dijkstra(start):
@@ -69,9 +71,9 @@ def component_geodesic_diameter(component_mask, spacing_xyz):
 
                 new_distance = current_distance + weight
 
-                if new_distance < distances.get(neighbor,float("inf")):
+                if new_distance < distances.get(neighbor, float("inf")):
                     distances[neighbor] = new_distance
-                    heapq.heappush(queue,(new_distance, neighbor))
+                    heapq.heappush(queue, (new_distance, neighbor))
 
         return farthest_node, farthest_distance
 
@@ -93,13 +95,13 @@ def compute_componentwise_skeleton_length(skeleton, spacing_xyz):
         component_lengths_mm
     """
 
-    structure = np.ones((3, 3, 3),dtype=np.uint8)
+    structure = np.ones((3, 3, 3), dtype=np.uint8)
     labeled_skeleton, n_components = label(skeleton, structure=structure)
 
     component_lengths_mm = []
 
     for component_id in range(1, n_components + 1):
-        component = (labeled_skeleton == component_id)
+        component = labeled_skeleton == component_id
 
         length_mm = component_geodesic_diameter(component, spacing_xyz)
 
@@ -108,6 +110,7 @@ def compute_componentwise_skeleton_length(skeleton, spacing_xyz):
     total_length_mm = sum(component_lengths_mm)
 
     return (total_length_mm, component_lengths_mm)
+
 
 def remove_small_components(mask, spacing_xyz, min_volume_ml=5.0):
     structure = np.ones((3, 3, 3), dtype=np.uint8)
@@ -135,15 +138,15 @@ def analyze_colon(mask_path):
     image = sitk.ReadImage(mask_path)
     spacing = image.GetSpacing()
     array = sitk.GetArrayFromImage(image)
-    
+
     mask = array > 0
-    mask = remove_small_components(mask,spacing,min_volume_ml=5.0)
+    mask = remove_small_components(mask, spacing, min_volume_ml=5.0)
 
     # Basic volume information
     n_voxels = int(np.count_nonzero(mask))
-    voxel_volume_mm3 = (spacing[0] * spacing[1] * spacing[2])
-    volume_mm3 = (n_voxels * voxel_volume_mm3)
-    volume_ml = (volume_mm3 / 1000.0)
+    voxel_volume_mm3 = spacing[0] * spacing[1] * spacing[2]
+    volume_mm3 = n_voxels * voxel_volume_mm3
+    volume_ml = volume_mm3 / 1000.0
 
     # Connected components of colon
     structure = np.ones((3, 3, 3), dtype=np.uint8)
@@ -152,19 +155,20 @@ def analyze_colon(mask_path):
 
     if len(component_sizes) > 0:
         largest_component_voxels = int(component_sizes.max())
-        largest_component_fraction = (largest_component_voxels / n_voxels)
+        largest_component_fraction = largest_component_voxels / n_voxels
     else:
         largest_component_voxels = 0
         largest_component_fraction = 0.0
 
-   
     # 3D skeleton
     skeleton = skeletonize(mask, method="lee")
     n_skeleton_voxels = int(np.count_nonzero(skeleton))
 
     # Approximate main-path length
-    (skeleton_length_mm, component_lengths_mm) = compute_componentwise_skeleton_length(skeleton, spacing)
-    skeleton_length_cm = (skeleton_length_mm / 10.0)
+    skeleton_length_mm, component_lengths_mm = compute_componentwise_skeleton_length(
+        skeleton, spacing
+    )
+    skeleton_length_cm = skeleton_length_mm / 10.0
     component_lengths_cm = [length_mm / 10.0 for length_mm in component_lengths_mm]
 
     metrics = {
@@ -181,34 +185,45 @@ def analyze_colon(mask_path):
 
     return metrics
 
-
-def save_metrics(metrics, output_csv):
-    with open(output_csv,"w",newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=metrics.keys())
-
-        writer.writeheader()
-        writer.writerow(metrics)
-
+def save_data(path: str, metrics: dict):
+    global HEADER_ADDED
+    if not HEADER_ADDED:
+        with open(path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=metrics.keys())
+            writer.writeheader()
+            writer.writerow(metrics)
+        HEADER_ADDED = True
+    else:
+        with open(path, "a", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=metrics.keys())
+            writer.writerow(metrics)
 
 def main():
-    parser = argparse.ArgumentParser(description=("Compute variability metrics from a colon MHA segmentation."))
-    parser.add_argument("input_mha", help=("Path to the colon segmentation .mha file"))
-    parser.add_argument("--output", default="colon_metrics.csv", help="Output CSV path")
+    parser = argparse.ArgumentParser(
+        description=("Compute variability metrics from a colon MHA segmentation.")
+    )
+    parser.add_argument("--input_mha", help=("Path to the colon segmentation .mha file"))
+    parser.add_argument("--output", default="colon_metrics_daria.csv", help="Output CSV path")
     args = parser.parse_args()
 
-    metrics = analyze_colon(args.input_mha)
-    save_metrics(metrics,args.output)
+    for filename in sorted(os.listdir(args.input_mha)):
+            print("Processing file:", filename, flush=True)
+            if filename.endswith(".mha"):
+                filepath = os.path.join(args.input_mha, filename)
+                metrics = analyze_colon(filepath)
 
-    print("\nColon metrics\n")
+                save_data(args.output, metrics)                
 
-    for key, value in metrics.items():
-        if isinstance(value,(float, np.floating)):
-            print(f"{key}: {value:.4f}")
+                print("\nColon metrics\n")
 
-        else:
-            print(f"{key}: {value}")
+                for key, value in metrics.items():
+                    if isinstance(value, (float, np.floating)):
+                        print(f"{key}: {value:.4f}")
 
-    print(f"\nSaved to: {args.output}")
+                    else:
+                        print(f"{key}: {value}")
+
+                print(f"\nSaved to: {args.output}")
 
 
 if __name__ == "__main__":
