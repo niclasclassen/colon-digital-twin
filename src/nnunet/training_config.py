@@ -3,18 +3,19 @@ import subprocess
 from carbontracker.tracker import CarbonTracker
 
 # Set up CarbonTracker for monitoring energy usage
+
 tracker = CarbonTracker(epochs=1)
 tracker.epoch_start()
 
 # Define parameters for nnUNet training
-NNUNET_TRAIN_BIN = "/path/to/nnUNetv2_train"  # Path to nnUNetv2_train executable
+NNUNET_TRAIN_BIN = "nnUNetv2_train"  # Path to nnUNetv2_train executable
 DATASET_NUMBER = "999"  # Dataset number
 CONFIG = "3d_fullres"  # Model configuration
-FOLD = "0"  # Fold number (0-4)
+FOLD = "4"  # Fold number (0-4)
 
 # Construct the training command with placeholders
 command = (
-    f"NNUNET_NUM_DATALOADER_WORKERS=0 "
+    f"NNUNET_NUM_DATALOADER_WORKERS=8"
     f"nnUNet_compile=False "
     f"{NNUNET_TRAIN_BIN} {DATASET_NUMBER} {CONFIG} {FOLD} --npz --c"
 )

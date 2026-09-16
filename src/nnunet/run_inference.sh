@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Set required environment variables for nnUNet
-export nnUNet_raw="./nnunet_raw"                    # Raw dataset directory
-export nnUNet_preprocessed="./nnUNet_preprocessed"  # Preprocessed data directory
-export nnUNet_results="./nnunet_results"            # Model results directory
-export dataset_name="Dataset999_Colon"              # Dataset name
-export dataset_number="999"                         # Dataset number
-#export fold=1                                      # Fold number (not needed as we use 5-fold cross-validation)
+export nnUNet_raw="./raw"                        # Base directory for raw dataset
+export nnUNet_preprocessed="./preprocessed"      # Directory for preprocessed data
+export nnUNet_results="./results"                # Directory to store trained model results
+export dataset_name="Dataset999_Colon"           # Dataset name
+export dataset_number="999"                      # Dataset number
+#export fold=1                                   # Fold number (not needed as we use 5-fold cross-validation)
 
 # Print the environment variables for debugging
 echo "nnUNet_raw: $nnUNet_raw"
@@ -17,8 +17,8 @@ echo "dataset number: $dataset_number"
 
 # Run nnUNet inference (update the placeholders as needed)
 nnUNetv2_predict \
-  -i /path/to/input_images \
-  -o /path/to/output_predictions \
+  -i ../data/raw \
+  -o ../data/predictions \
   -d $dataset_number \
   -c 3d_fullres \
   --verbose \

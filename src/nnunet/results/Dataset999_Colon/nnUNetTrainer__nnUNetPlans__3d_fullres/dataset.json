@@ -1,0 +1,15 @@
+{
+    "channel_names": {
+        "0": "CT"
+    },
+    "modality": {
+        "0": "CT"
+    },
+    "labels": {
+        "background": 0,
+        "colon": 1
+    },
+    "numTraining": 687,
+    "file_ending": ".mha",
+    "dataset_name": "Dataset999_Colon"
+}
